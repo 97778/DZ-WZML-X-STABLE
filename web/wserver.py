@@ -31,11 +31,25 @@ SERVICES = {
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global aria2, qbittorrent
-    aria2 = Aria2HttpClient("http://localhost:6800/jsonrpc")
-    qbittorrent = await create_client("http://localhost:8090/api/v2/")
+    try:
+        aria2 = Aria2HttpClient("http://localhost:6800/jsonrpc")
+    except (ClientError, TimeoutError, OSError) as e:
+        LOGGER.error(f"{e} Failed to initialize Aria2 client")
+        aria2 = None
+    try:
+        qbittorrent = await create_client(
+            "http://localhost:8090/api/v2/",
+            username="admin",
+            password="DownloaderZone2122",
+        )
+    except (ClientError, TimeoutError, OSError, AQError) as e:
+        LOGGER.error(f"{e} Failed to initialize qBittorrent client")
+        qbittorrent = None
     yield
-    await aria2.close()
-    await qbittorrent.close()
+    if aria2:
+        await aria2.close()
+    if qbittorrent:
+        await qbittorrent.close()
 
 
 app = FastAPI(lifespan=lifespan)
@@ -143,34 +157,51 @@ async def handle_torrent(request: Request):
                 }
             )
         data = await request.json()
-        if mode == "rename":
-            if len(gid) > 20:
-                await handle_rename(gid, data)
+        try:
+            if mode == "rename":
+                if len(gid) > 20:
+                    await handle_rename(gid, data)
+                    content = {
+                        "files": [],
+                        "engine": "",
+                        "error": "",
+                        "message": "Rename successfully.",
+                    }
+                else:
+                    content = {
+                        "files": [],
+                        "engine": "",
+                        "error": "Rename failed.",
+                        "message": "Cannot rename aria2c torrent file",
+                    }
+            else:
+                selected_files, unselected_files = extract_file_ids(data)
+                if len(gid) > 20:
+                    await set_qbittorrent(gid, selected_files, unselected_files)
+                else:
+                    selected_files = ",".join(selected_files)
+                    await set_aria2(gid, selected_files)
                 content = {
                     "files": [],
                     "engine": "",
                     "error": "",
-                    "message": "Rename successfully.",
+                    "message": "Your selection has been submitted successfully.",
                 }
-            else:
-                content = {
-                    "files": [],
-                    "engine": "",
-                    "error": "Rename failed.",
-                    "message": "Cannot rename aria2c torrent file",
-                }
-        else:
-            selected_files, unselected_files = extract_file_ids(data)
-            if len(gid) > 20:
-                await set_qbittorrent(gid, selected_files, unselected_files)
-            else:
-                selected_files = ",".join(selected_files)
-                await set_aria2(gid, selected_files)
+        except (ClientError, TimeoutError, AQError) as e:
+            LOGGER.error(f"{e} Errored in file selection submit")
             content = {
                 "files": [],
                 "engine": "",
-                "error": "",
-                "message": "Your selection has been submitted successfully.",
+                "error": "Error submitting selection",
+                "message": str(e),
+            }
+        except Exception as e:
+            LOGGER.error(f"{type(e).__name__}: {e} Errored in file selection submit")
+            content = {
+                "files": [],
+                "engine": "",
+                "error": "Error submitting selection",
+                "message": f"{type(e).__name__}: {e}",
             }
     else:
         try:
