@@ -392,6 +392,17 @@
                     <button id="selectEverythingBtn" class="btn btn-primary">Select Everything</button>
                     <span class="text-xs mt-1">all files</span>
                 </div>
+                <div class="flex flex-col items-center mr-2 mb-2">
+                    <div class="flex items-center gap-1">
+                        <input id="rangeStartInput" type="number" min="1" placeholder="from #"
+                            class="border rounded px-2 py-1 w-20 text-sm" />
+                        <span class="text-xs">to</span>
+                        <input id="rangeEndInput" type="number" min="1" placeholder="to #"
+                            class="border rounded px-2 py-1 w-20 text-sm" />
+                        <button id="selectRangeBtn" class="btn btn-primary">Select Range</button>
+                    </div>
+                    <span class="text-xs mt-1">by position in this folder, e.g. 5 to 20 &middot; shift-click also works</span>
+                </div>
                 <button id="submitBtn" class="btn btn-primary mb-2">Submit</button>
             </div>
             <div class="mb-4">
@@ -523,7 +534,19 @@
                 checkbox.type = 'checkbox';
                 checkbox.id = node.id;
                 checkbox.checked = node.selected;
-                checkbox.addEventListener('change', () => toggleFile(node));
+                checkbox.addEventListener('click', (e) => {
+                    if (e.shiftKey) {
+                        e.preventDefault();
+                        handleShiftRangeSelect(node, nodes);
+                    }
+                });
+                checkbox.addEventListener('change', (e) => {
+                    if (!e.shiftKey) {
+                        toggleFile(node);
+                    }
+                    const idx = nodes.findIndex(n => n.id === node.id);
+                    if (idx !== -1) lastClickedIndex = idx;
+                });
 
                 checkboxWrapper.appendChild(checkbox);
 
@@ -766,6 +789,62 @@
             updateSelectEverythingButtonText();
         }
 
+        function selectRange(startPos, endPos) {
+            const nodes = currentFolder ? currentFolder.children : files;
+            if (!nodes || nodes.length === 0) return;
+
+            let lo = Math.min(startPos, endPos);
+            let hi = Math.max(startPos, endPos);
+            lo = Math.max(1, lo);
+            hi = Math.min(nodes.length, hi);
+
+            if (lo > nodes.length || hi < 1) {
+                showRangeError(`This folder only has ${nodes.length} item${nodes.length === 1 ? '' : 's'}.`);
+                return;
+            }
+
+            for (let i = lo - 1; i <= hi - 1; i++) {
+                const node = nodes[i];
+                if (node.type === 'folder') {
+                    toggleFolder(node, true);
+                } else {
+                    node.selected = true;
+                }
+                updateParentFolders(node);
+            }
+            updateStats();
+            renderFileTree(nodes);
+        }
+
+        function showRangeError(message) {
+            modalTitle.textContent = 'Invalid Range';
+            modalBody.innerHTML = `<p>${message}</p>`;
+            modalFooter.innerHTML = '<button class="btn btn-primary" onclick="closeModal()">OK</button>';
+            openModal();
+        }
+
+        function handleSelectRangeClick() {
+            const startVal = parseInt(rangeStartInput.value, 10);
+            const endVal = parseInt(rangeEndInput.value, 10);
+            if (Number.isNaN(startVal) || Number.isNaN(endVal)) {
+                showRangeError('Please enter both a start and end number.');
+                return;
+            }
+            selectRange(startVal, endVal);
+        }
+
+        let lastClickedIndex = null;
+
+        function handleShiftRangeSelect(node, nodes) {
+            const clickedIndex = nodes.findIndex(n => n.id === node.id);
+            if (lastClickedIndex !== null && clickedIndex !== -1) {
+                selectRange(lastClickedIndex + 1, clickedIndex + 1);
+            }
+            if (clickedIndex !== -1) {
+                lastClickedIndex = clickedIndex;
+            }
+        }
+
         function getFullPath(node) {
             const path = [];
             let currentNode = findParent(files[0], node.id);
@@ -928,9 +1007,13 @@
         themeToggle.addEventListener('change', toggleTheme);
         const invertSelectionBtn = document.getElementById('invertSelectionBtn');
         const selectEverythingBtn = document.getElementById('selectEverythingBtn');
+        const selectRangeBtn = document.getElementById('selectRangeBtn');
+        const rangeStartInput = document.getElementById('rangeStartInput');
+        const rangeEndInput = document.getElementById('rangeEndInput');
 
         invertSelectionBtn.addEventListener('click', invertSelection);
         selectEverythingBtn.addEventListener('click', selectEverything);
+        selectRangeBtn.addEventListener('click', handleSelectRangeClick);
 
         selectAllBtn.addEventListener('click', selectAll);
         selectEverythingBtn.addEventListener('click', selectEverything);
