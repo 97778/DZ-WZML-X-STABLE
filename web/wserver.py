@@ -143,51 +143,34 @@ async def handle_torrent(request: Request):
                 }
             )
         data = await request.json()
-        try:
-            if mode == "rename":
-                if len(gid) > 20:
-                    await handle_rename(gid, data)
-                    content = {
-                        "files": [],
-                        "engine": "",
-                        "error": "",
-                        "message": "Rename successfully.",
-                    }
-                else:
-                    content = {
-                        "files": [],
-                        "engine": "",
-                        "error": "Rename failed.",
-                        "message": "Cannot rename aria2c torrent file",
-                    }
-            else:
-                selected_files, unselected_files = extract_file_ids(data)
-                if len(gid) > 20:
-                    await set_qbittorrent(gid, selected_files, unselected_files)
-                else:
-                    selected_files = ",".join(selected_files)
-                    await set_aria2(gid, selected_files)
+        if mode == "rename":
+            if len(gid) > 20:
+                await handle_rename(gid, data)
                 content = {
                     "files": [],
                     "engine": "",
                     "error": "",
-                    "message": "Your selection has been submitted successfully.",
+                    "message": "Rename successfully.",
                 }
-        except (ClientError, TimeoutError, AQError) as e:
-            LOGGER.error(f"{e} Errored in file selection submit")
+            else:
+                content = {
+                    "files": [],
+                    "engine": "",
+                    "error": "Rename failed.",
+                    "message": "Cannot rename aria2c torrent file",
+                }
+        else:
+            selected_files, unselected_files = extract_file_ids(data)
+            if len(gid) > 20:
+                await set_qbittorrent(gid, selected_files, unselected_files)
+            else:
+                selected_files = ",".join(selected_files)
+                await set_aria2(gid, selected_files)
             content = {
                 "files": [],
                 "engine": "",
-                "error": "Error submitting selection",
-                "message": str(e),
-            }
-        except Exception as e:
-            LOGGER.error(f"{type(e).__name__}: {e} Errored in file selection submit")
-            content = {
-                "files": [],
-                "engine": "",
-                "error": "Error submitting selection",
-                "message": f"{type(e).__name__}: {e}",
+                "error": "",
+                "message": "Your selection has been submitted successfully.",
             }
     else:
         try:
