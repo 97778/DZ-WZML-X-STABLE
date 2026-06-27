@@ -15,7 +15,7 @@ from ..helper.telegram_helper.message_utils import (
     delete_message,
 )
 
-imdb = Cinemagoer(accessSystem="http")
+imdb = Cinemagoer(uri="sqlite:///cinemagoer.db")
 
 IMDB_GENRE_EMOJI = {
     "Action": "🚀",
