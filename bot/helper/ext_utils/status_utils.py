@@ -244,21 +244,20 @@ async def get_readable_message(sid, is_user, page_no=1, status="All", page_step=
             tstatus = await task.status()
         else:
             tstatus = task.status()
-        
-        msg += f"<b>{index + start_position}. <code>{escape(f'{task.name()}')}</code></b>"
+        msg += f"<b>{index + start_position}.</b> "
+        msg += f"<b><code>{escape(f'{task.name()}')}</code></b>"
         if task.listener.subname:
             msg += f"\n╰ <b>Sub Name</b> → <i>{task.listener.subname}</i>"
         elapsed = time() - task.listener.message.date.timestamp()
 
-        # Fixed layout characters to match image 1000657758.jpg perfectly
-        msg += f"\n<blockquote>╭ <b>Task By {task.listener.message.from_user.mention(style='html')}</b>"
+        msg += f"\n<blockquote>╭ <b>Task By {task.listener.message.from_user.mention(style='html')} </b>"
 
         if (
             tstatus not in [MirrorStatus.STATUS_SEED, MirrorStatus.STATUS_QUEUEUP]
             and task.listener.progress
         ):
             progress = task.progress()
-            msg += f"\n│ [{get_progress_bar_string(progress).strip('[]')}] <i>{progress}</i>"
+            msg += f"\n┊ <code>{get_progress_bar_string(progress)}</code> <i>{progress}</i>"
             if task.listener.subname:
                 subsize = f" / {get_readable_file_size(task.listener.subsize)}"
                 ac = len(task.listener.files_to_proceed)
@@ -267,37 +266,39 @@ async def get_readable_message(sid, is_user, page_no=1, status="All", page_step=
                 subsize = ""
                 count = ""
             if task.listener.is_super_chat:
-                msg += f"\n│ Status    : <b><a href='{task.listener.message.link}'>{tstatus}</a></b>"
+                msg += f"\n┊ <code>Status   :</code> <b><a href='{task.listener.message.link}'>{tstatus}</a></b>"
             else:
-                msg += f"\n│ Status    : <b>{tstatus}</b>"
-            msg += f"\n│ Done      : <i>{task.processed_bytes()}{subsize}</i>"
-            msg += f"\n│ Total     : <i>{task.size()}</i>"
+                msg += f"\n┊ <code>Status   :</code> <b>{tstatus}</b>"
+            msg += f"\n┊ <code>Done     :</code> <i>{task.processed_bytes()}{subsize}</i>"
+            msg += f"\n┊ <code>Total    :</code> <i>{task.size()}</i>"
             if count:
-                msg += f"\n│ Count     : <b>{count}</b>"
-            msg += f"\n│ Speed     : <i>{task.speed()}</i>"
-            msg += f"\n│ ETA       : <i>{task.eta()}</i>"
-            msg += f"\n│ Past      : <i>{get_readable_time(elapsed + get_raw_time(task.eta()))} ({get_readable_time(elapsed)})</i>"
+                msg += f"\n┊ <code>Count    :</code> <b>{count}</b>"
+            msg += f"\n┊ <code>Speed    :</code> <i>{task.speed()}</i>"
+            msg += f"\n┊ <code>ETA      :</code> <i>{task.eta()}</i>"
+            msg += f"\n┊ <code>Past     :</code> <i>{get_readable_time(elapsed + get_raw_time(task.eta()))} ({get_readable_time(elapsed)})</i>"
             if tstatus == MirrorStatus.STATUS_DOWNLOAD and (
                 task.listener.is_torrent or task.listener.is_qbit
             ):
                 try:
-                    msg += f"\n│ Seeders   : <i>{task.seeders_num()}</i>"
-                    msg += f"\n│ Leechers  : <i>{task.leechers_num()}</i>"
+                    msg += f"\n┊ <code>Seeders  :</code> {task.seeders_num()}"
+                    msg += f"\n┊ <code>Leechers :</code> {task.leechers_num()}"
                 except Exception:
                     pass
+            # TODO: Add Connected Peers
         elif tstatus == MirrorStatus.STATUS_SEED:
-            msg += f"\n│ Status    : <b>{tstatus}</b>"
-            msg += f"\n│ Done      : <i>{task.uploaded_bytes()}</i>"
-            msg += f"\n│ Total     : <i>{task.size()}</i>"
-            msg += f"\n│ Speed     : <i>{task.seed_speed()}</i>"
-            msg += f"\n│ Ratio     : <i>{task.ratio()}</i>"
-            msg += f"\n│ ETA       : <i>{task.seeding_time()}</i>"
-            msg += f"\n│ Past      : <i>{get_readable_time(elapsed)}</i>"
+            msg += f"\n┊ <code>Status   :</code> <b>{tstatus}</b>"
+            msg += f"\n┊ <code>Done     :</code> <i>{task.uploaded_bytes()}</i>"
+            msg += f"\n┊ <code>Total    :</code> <i>{task.size()}</i>"
+            msg += f"\n┊ <code>Speed    :</code> <i>{task.seed_speed()}</i>"
+            msg += f"\n┊ <code>Ratio    :</code> <i>{task.ratio()}</i>"
+            msg += f"\n┊ <code>ETA      :</code> <i>{task.seeding_time()}</i>"
+            msg += f"\n┊ <code>Past     :</code> <i>{get_readable_time(elapsed)}</i>"
         else:
-            msg += f"\n│ Size      : <i>{task.size()}</i>"
-        msg += f"\n│ Engine    : <i>{task.engine}</i>"
-        msg += f"\n╰ Mode      : <b>#{task.listener.mode[1]}</b></blockquote>"
-        msg += f"\n➢ Stop  : <i>/{BotCommands.CancelTaskCommand[1]}_{task.gid()}</i>\n\n"
+            msg += f"\n┊ <code>Size     :</code> <i>{task.size()}</i>"
+        msg += f"\n┊ <code>Engine   :</code> <i>{task.engine}</i>"
+        msg += f"\n╰ <code>Mode     :</code> <i>{task.listener.mode[1]}</i></blockquote>"
+        # TODO: Add Bt Sel
+        msg += f"\n<blockquote>⋗ <code>Stop :</code> <i>/{BotCommands.CancelTaskCommand[1]}_{task.gid()}</i></blockquote>\n\n"
 
     if len(msg) == 0:
         if status == "All":
@@ -321,27 +322,12 @@ async def get_readable_message(sid, is_user, page_no=1, status="All", page_step=
                 buttons.data_button(label, f"status {sid} st {status_value}")
     buttons.data_button("♻️", f"status {sid} ref", position="header")
     button = buttons.build_menu(8)
-    
-    # System stats footer (Matching image 1000657749.jpg / 1000657758.jpg)
-    total_dl_speed = 0
-    total_ul_speed = 0
-    for tk in tasks:
-        try:
-            st = await tk.status() if iscoroutinefunction(tk.status) else tk.status()
-            if st == MirrorStatus.STATUS_DOWNLOAD:
-                total_dl_speed += speed_string_to_bytes(tk.speed())
-            elif st == MirrorStatus.STATUS_UPLOAD:
-                total_ul_speed += speed_string_to_bytes(tk.speed())
-            elif st == MirrorStatus.STATUS_SEED:
-                total_ul_speed += speed_string_to_bytes(tk.seed_speed())
-        except Exception:
-            pass
-
-    msg += "<blockquote>"
-    msg += f"Tasks: {tasks_no}\n"
-    msg += f"Cpu: {cpu_percent()}% | Free: {get_readable_file_size(disk_usage(DOWNLOAD_DIR).free)}\n"
-    msg += f"Ram: {virtual_memory().percent}% | Uptime: {get_readable_time(time() - bot_start_time)}\n"
-    msg += f"DL: {get_readable_file_size(total_dl_speed)}/s | UL: {get_readable_file_size(total_ul_speed)}/s"
-    msg += "</blockquote>"
-    
+    msg += "\n"
+    msg += "⌬ <b><i>𝗕𝗢𝗧 𝗦𝗧𝗔𝗧𝗦</i></b>"
+    msg += f"\n<blockquote>╭ <code>CPU  :</code> {cpu_percent()}%"
+    msg += f"\n┊ <code>RAM  :</code> {virtual_memory().percent}%"
+    msg += (
+        f"\n┊ <code>FREE :</code> {get_readable_file_size(disk_usage(DOWNLOAD_DIR).free)}"
+    )
+    msg += f"\n╰ <code>UP   :</code> {get_readable_time(time() - bot_start_time)}</blockquote>"
     return msg, button
