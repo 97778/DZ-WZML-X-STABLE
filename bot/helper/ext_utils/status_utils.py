@@ -322,12 +322,27 @@ async def get_readable_message(sid, is_user, page_no=1, status="All", page_step=
                 buttons.data_button(label, f"status {sid} st {status_value}")
     buttons.data_button("♻️", f"status {sid} ref", position="header")
     button = buttons.build_menu(8)
-    msg += "\n"
-    msg += "⌬ <b><i>𝗕𝗢𝗧 𝗦𝗧𝗔𝗧𝗦</i></b>"
-    msg += f"\n<blockquote>╭ <code>CPU  :</code> {cpu_percent()}%"
-    msg += f"\n┊ <code>RAM  :</code> {virtual_memory().percent}%"
-    msg += (
-        f"\n┊ <code>FREE :</code> {get_readable_file_size(disk_usage(DOWNLOAD_DIR).free)}"
-    )
-    msg += f"\n╰ <code>UP   :</code> {get_readable_time(time() - bot_start_time)}</blockquote>"
+    
+    # System stats footer (Matching image 1000657749.jpg)
+    total_dl_speed = 0
+    total_ul_speed = 0
+    for tk in tasks:
+        try:
+            st = await tk.status() if iscoroutinefunction(tk.status) else tk.status()
+            if st == MirrorStatus.STATUS_DOWNLOAD:
+                total_dl_speed += speed_string_to_bytes(tk.speed())
+            elif st == MirrorStatus.STATUS_UPLOAD:
+                total_ul_speed += speed_string_to_bytes(tk.speed())
+            elif st == MirrorStatus.STATUS_SEED:
+                total_ul_speed += speed_string_to_bytes(tk.seed_speed())
+        except Exception:
+            pass
+
+    msg += "<blockquote>"
+    msg += f"Tasks: {tasks_no}\n"
+    msg += f"Cpu: {cpu_percent()}% | Free: {get_readable_file_size(disk_usage(DOWNLOAD_DIR).free)}\n"
+    msg += f"Ram: {virtual_memory().percent}% | Uptime: {get_readable_time(time() - bot_start_time)}\n"
+    msg += f"DL: {get_readable_file_size(total_dl_speed)}/s | UL: {get_readable_file_size(total_ul_speed)}/s"
+    msg += "</blockquote>"
+    
     return msg, button
